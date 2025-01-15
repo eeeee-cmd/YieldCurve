@@ -1,5 +1,4 @@
 # Code Reference for Yield Curves
-- Code Reference for Yield Curves
 
 ## File Structure
 
