@@ -1,107 +1,8 @@
----
-title: "Yield and Forward Rate"
-author: "Deyi Kong"
-date: "`r Sys.Date()`"
-format: pdf
----
-
-```{r}
-#|echo=False
-# Load necessary libraries
-library(dplyr)
+# Load necessary packages
 library(ggplot2)
-library(lubridate)
-library(tidyverse)
-library(purrr)
 library(dplyr)
-library(knitr)
-library(kableExtra)
-```
+library(tidyr)
 
-```{r}
-# Load dataset
-data <- read.csv("data/analysis_data/analysis_data2.csv")
-
-# Convert closing prices to numeric by removing dollar signs
-price_columns <- names(data)[6:length(data)]
-data[price_columns] <- lapply(data[price_columns], function(x) as.numeric(gsub("[$,]", "", x)))
-
-# Convert dates
-data$Maturity.Date <- as.Date(data$Maturity.Date, format="%Y-%m-%d")
-data$Issue.Date <- as.Date(data$Issue.Date, format="%Y-%m-%d")
-
-# Convert coupon rate to decimal
-data$Coupon <- as.numeric(gsub("%", "", data$Coupon)) / 100
-
-# Convert Maturity Date to Date format and calculate Time to Maturity
-data <- data %>%
-  mutate(Time.to.Maturity = as.numeric(difftime(Maturity.Date, as.Date("2025-01-17"), units = "days")) / 365)
-
-# Function to calculate YTM using numerical solving
-ytm_solver <- function(price, face_value, coupon_rate, years_to_maturity, num_coupons = 2) {
-  coupon_payment <- (coupon_rate * face_value) / num_coupons
-  periods <- years_to_maturity * num_coupons
-  
-  # Define bond price equation
-  bond_price_eq <- function(y) {
-    sum(coupon_payment / (1 + y / num_coupons)^(1:periods)) +
-      face_value / (1 + y / num_coupons)^periods - price
-  }
-  
-  # Solve for YTM using uniroot
-  result <- tryCatch({
-    uniroot(bond_price_eq, c(0, 1))$root
-  }, error = function(e) { NA })
-  
-  return(result)
-}
-
-# Compute YTM for each bond for each closing price date
-face_value <- 100
-ytm_results <- data.frame(Maturity.Date = data$Maturity.Date)
-
-for (date in price_columns) {
-  ytm_results[[date]] <- mapply(ytm_solver, 
-                                price = data[[date]], 
-                                face_value = face_value, 
-                                coupon_rate = data$Coupon, 
-                                years_to_maturity = as.numeric(difftime(data$Maturity.Date, as.Date("2025-01-06"), units="days")) / 365)
-}
-
-# Reshape the data for plotting
-ytm_long <- ytm_results %>%
-  pivot_longer(-Maturity.Date, names_to = "Date", values_to = "YTM") %>%
-  mutate(Date = gsub(" Close Price", "", Date),
-         Years.to.Maturity = as.numeric(difftime(Maturity.Date, as.Date("2025-01-06"), units="days")) / 365)
-
-# Plot the yield curves
-ggplot(ytm_long, aes(x = Years.to.Maturity, y = YTM, color = Date, group = Date)) +
-  geom_line(aes(linetype = Date)) +
-  geom_point() +
-  labs(title = "5-Year Yield Curve Over Time",
-       x = "Years to Maturity",
-       y = "Yield to Maturity (YTM)") +
-  theme_minimal()
-
-# Apply cubic spline interpolation correctly
-ytm_spline <- ytm_long %>%
-  group_by(Date) %>%
-  summarise(
-    Years.to.Maturity.Fine = list(seq(min(Years.to.Maturity), max(Years.to.Maturity), length.out = 100)),
-    YTM.Fine = list(spline(Years.to.Maturity, YTM, xout = seq(min(Years.to.Maturity), max(Years.to.Maturity), length.out = 100))$y)
-  ) %>%
-  unnest(cols = c(Years.to.Maturity.Fine, YTM.Fine))
-
-# Plot the yield curves using cubic spline interpolation
-ggplot(ytm_spline, aes(x = Years.to.Maturity.Fine, y = YTM.Fine, color = Date, group = Date)) +
-  geom_line() +
-  labs(title = "5-Year Yield Curve (Cubic Spline Interpolation)",
-       x = "Years to Maturity",
-       y = "Yield to Maturity (YTM)") +
-  theme_minimal()
-```
-
-```{r}
 # Load dataset
 df <- read.csv("data/analysis_data/analysis_data2.csv")
 # Convert closing prices to numeric by removing dollar signs
@@ -128,6 +29,7 @@ df_long <- df %>%
   rename(Coupon = Coupon, 
          Maturity = Time.to.Maturity) %>%
   arrange(Date, Maturity)  # Sort by date and maturity
+
 
 # Function to compute spot rates using bootstrapping
 bootstrap_spot_curve <- function(bond_data) {
@@ -169,9 +71,15 @@ ggplot(spot_curve_data, aes(x = Maturity, y = Spot_Rate, color = as.factor(Date_
        x = "Maturity (Years)", y = "Spot Rate",
        color = "Date") +
   theme_minimal()
-```
 
-```{r}
+
+
+
+
+
+
+
+
 # Initialize a list to store forward curves for each date
 forward_curves <- list()
 
@@ -222,9 +130,15 @@ ggplot(forward_curve_df, aes(x = Maturity, y = Forward_Rate, color = Date, group
        y = "Forward Rate",
        color = "Date") +
   theme_minimal()
-```
 
-```{r}
+
+
+
+
+
+# Load necessary libraries
+library(knitr)
+
 # Extract YTM values (excluding the first column, which contains maturity dates)
 ytm_values <- ytm_results[, -1]
 
@@ -299,47 +213,4 @@ kable(cov_matrix_yields, caption = "Covariance Matrix of Yields (5x5)")
 # Print covariance matrix for forward rates using kable
 print("Covariance Matrix of Forward Rates (4x4):")
 kable(cov_matrix_forward, caption = "Covariance Matrix of Forward Rates (4x4)")
-print("Covariance Matrix of Yields (5x5):")
-kable(cov_matrix_yields, caption = "Covariance Matrix of Yields (5x5)")
 
-# Print covariance matrix for forward rates using kable
-print("Covariance Matrix of Forward Rates (4x4):")
-kable(cov_matrix_forward, caption = "Covariance Matrix of Forward Rates (4x4)")
-```
-
-```{r}
-# Compute eigenvalues and eigenvectors for yields
-eigen_yields <- eigen(cov_matrix_yields)
-
-# Eigenvalues
-eigenvalues_yields <- eigen_yields$values
-
-# Eigenvectors
-eigenvectors_yields <- eigen_yields$vectors
-
-# Compute eigenvalues and eigenvectors for forward rates
-eigen_forward <- eigen(cov_matrix_forward)
-
-# Eigenvalues
-eigenvalues_forward <- eigen_forward$values
-
-# Eigenvectors
-eigenvectors_forward <- eigen_forward$vectors
-```
-
-```{r}
-# Print eigenvalues and eigenvectors for yields using kable
-kable(eigenvalues_yields, caption = "Eigenvalues of Covariance Matrix of Yields") %>%
-  kable_styling(latex_options = "striped")
-
-kable(eigenvectors_yields, caption = "Eigenvectors of Covariance Matrix of Yields") %>%
-  kable_styling(latex_options = "striped")
-```
-
-```{r}
-kable(eigenvalues_forward, caption = "Eigenvalues of Covariance Matrix of Forward Rates") %>%
-  kable_styling(latex_options = "striped")
-
-kable(eigenvectors_forward, caption = "Eigenvectors of Covariance Matrix of Forward Rates") %>%
-  kable_styling(latex_options = "striped")
-```
