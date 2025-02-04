@@ -1,12 +1,13 @@
 ---
 title: "Yield and Forward Rate"
 author: "Deyi Kong"
-date: "`r Sys.Date()`"
+date: "today"
 format: pdf
 ---
 
 ```{r}
-#|echo=False
+#| echo: false
+#| warning: false
 # Load necessary libraries
 library(dplyr)
 library(ggplot2)
@@ -67,7 +68,9 @@ for (date in price_columns) {
                                 coupon_rate = data$Coupon, 
                                 years_to_maturity = as.numeric(difftime(data$Maturity.Date, as.Date("2025-01-06"), units="days")) / 365)
 }
+```
 
+```{r}
 # Reshape the data for plotting
 ytm_long <- ytm_results %>%
   pivot_longer(-Maturity.Date, names_to = "Date", values_to = "YTM") %>%
@@ -286,28 +289,29 @@ colnames(cov_matrix_forward) <- paste0("Forward_", 1:4, "yr")
 
 # Print log-return matrix for yields using kable
 print("Log-Return Matrix for Yields (10x5):")
-kable(log_returns_yields, caption = "Log-Return Matrix for Yields (10x5)")
+kable(log_returns_yields, caption = "Log-Return Matrix for Yields")
 
 # Print log-return matrix for forward rates using kable
 print("Log-Return Matrix for Forward Rates (10x4):")
-kable(log_returns_forward, caption = "Log-Return Matrix for Forward Rates (10x4)")
+kable(log_returns_forward, caption = "Log-Return Matrix for Forward Rates")
 
 # Print covariance matrix for yields using kable
-print("Covariance Matrix of Yields (5x5):")
-kable(cov_matrix_yields, caption = "Covariance Matrix of Yields (5x5)")
+print("Covariance Matrix of Yields:")
+kable(cov_matrix_yields, caption = "Covariance Matrix of Yields")
 
 # Print covariance matrix for forward rates using kable
-print("Covariance Matrix of Forward Rates (4x4):")
-kable(cov_matrix_forward, caption = "Covariance Matrix of Forward Rates (4x4)")
-print("Covariance Matrix of Yields (5x5):")
-kable(cov_matrix_yields, caption = "Covariance Matrix of Yields (5x5)")
+print("Covariance Matrix of Forward Rates:")
+kable(cov_matrix_forward, caption = "Covariance Matrix of Forward Rates")
+print("Covariance Matrix of Yields:")
+kable(cov_matrix_yields, caption = "Covariance Matrix of Yields")
 
 # Print covariance matrix for forward rates using kable
-print("Covariance Matrix of Forward Rates (4x4):")
-kable(cov_matrix_forward, caption = "Covariance Matrix of Forward Rates (4x4)")
+print("Covariance Matrix of Forward Rates:")
+kable(cov_matrix_forward, caption = "Covariance Matrix of Forward Rates")
 ```
 
 ```{r}
+#| echo: false
 # Compute eigenvalues and eigenvectors for yields
 eigen_yields <- eigen(cov_matrix_yields)
 
